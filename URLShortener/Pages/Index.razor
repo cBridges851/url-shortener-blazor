@@ -1,0 +1,75 @@
+﻿@page "/"
+@using SharedUrlShortenerData;
+@using URLShortener.Services;
+@inject NavigationManager navigationManager
+@inject DataService dataService
+
+<PageTitle>Index</PageTitle>
+<div @onload=OnLoad>
+    <EditForm Model="@inputtedUrlData" OnValidSubmit="@ShortenUrl" class="justify-content-center">
+        <div>
+            <div>
+                <label>URL: </label>
+                <InputText id="long_url" @bind-Value="inputtedUrlData.LongUrl" required></InputText>
+            </div>
+            <div>
+                <label>Key: </label>
+                <InputText @bind-Value="inputtedUrlData.Key" required></InputText>
+            </div>
+        </div>
+        <button class="btn-primary" type="submit">Shorten URL!</button>
+        <p>@outputMessage</p>
+        <p>Short URL: <a href="@outputtedUrlData.ShortUrl" target="_blank">@outputtedUrlData.ShortUrl</a></p>
+        <p>Long URL: <a href="@outputtedUrlData.ShortUrl" target="_blank">@outputtedUrlData.LongUrl</a></p>
+    </EditForm>
+    <table>
+        <thead>
+            <tr>
+                <th>Short URL</th>
+                <th>Long URL</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in this.allUrlData) {
+                <tr>
+                    <td><a href="@data.ShortUrl">@data.ShortUrl</a></td>
+                    <td><a href="@data.LongUrl">@data.LongUrl</a></td>
+                    <td><button class="btn-secondary" @onclick="() => Delete(data.Key)">Delete</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@code {
+    private string outputMessage = "";
+    private List<UrlData> allUrlData = new();
+    private UrlData inputtedUrlData = new();
+    private UrlData outputtedUrlData = new();
+
+    private void OnLoad() {
+        allUrlData = dataService.GetAllUrlData();
+    }
+
+    private void ShortenUrl() {
+        var result = dataService.AddUrl(inputtedUrlData.Key, inputtedUrlData.LongUrl);
+        if (result.Status is Status.KeyAlreadyExists) {
+            this.outputMessage = "The inputted key has already been used:";
+        } else if (result.Status is Status.UrlAlreadyShortened) {
+            this.outputMessage = "This URL has previously been shortened:";
+        } else if (result.Status is Status.Success) {
+            this.outputMessage = "Successfully shortened URL:";    
+        }
+
+        outputtedUrlData.ShortUrl = result.UrlData.ShortUrl;
+        outputtedUrlData.LongUrl = result.UrlData.LongUrl;
+        allUrlData = dataService.GetAllUrlData();
+        StateHasChanged();
+    }
+
+    private void Delete(string key) {
+        dataService.Delete(key);
+        allUrlData = dataService.GetAllUrlData();
+        StateHasChanged();
+    }
+}
